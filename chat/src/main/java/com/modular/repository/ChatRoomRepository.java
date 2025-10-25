@@ -1,8 +1,11 @@
 package com.modular.repository;
 
+import com.modular.domain.entity.ChatRoom;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
 @Repository
-public interface ChatRepository extends JpaRepository<> {
+public interface ChatRoomRepository extends JpaRepository<ChatRoom, Long> {
+
+
 }

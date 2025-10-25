@@ -6,6 +6,7 @@ plugins {
 
 dependencies {
     implementation project(':member')
+    implementation project(':chat')
 
     implementation 'org.springframework.boot:spring-boot-starter-web'
     implementation 'org.springframework.modulith:spring-modulith-starter-core'

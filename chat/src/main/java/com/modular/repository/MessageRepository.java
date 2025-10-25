@@ -1,2 +1,10 @@
-package com.modular.repository;public interface MessageRepository {
+package com.modular.repository;
+
+import com.modular.domain.entity.Message;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
+
+@Repository
+public interface MessageRepository extends JpaRepository<Message, Long> {
+
 }

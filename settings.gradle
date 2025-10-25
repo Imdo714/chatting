@@ -3,4 +3,5 @@ rootProject.name = 'modular-architecture'
 include(
         'api', // 메인 애플리케이션, API
         'member', // 회원 관리
+        'chat', // 채팅 관리
 )
