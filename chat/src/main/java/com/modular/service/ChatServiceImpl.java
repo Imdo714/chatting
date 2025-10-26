@@ -1,7 +1,13 @@
 package com.modular.service;
 
 import com.modular.domain.dto.request.CreateChatRoomRequest;
+import com.modular.domain.entity.ChatRoom;
+import com.modular.domain.entity.ChatRoomMember;
+import com.modular.domain.entity.Member;
+import com.modular.domain.type.MemberRole;
+import com.modular.repository.ChatRoomMemberRepository;
 import com.modular.repository.ChatRoomRepository;
+import com.modular.repository.MemberRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -12,9 +18,39 @@ import org.springframework.stereotype.Service;
 public class ChatServiceImpl implements ChatService {
 
     private final ChatRoomRepository chatRoomRepository;
+    private final ChatRoomMemberRepository chatRoomMemberRepository;
+    private final MemberRepository memberRepository;
+    private final WebSocketSessionManager webSocketSessionManager;
+
+    // 클라이언트가 브라우저에게 WebSocket 연결 시도하면 서버는 HandshakeInterceptor.beforeHandshake()에서 memberId를 세션 attributes에 넣음
+    // 연결 완료시 WebSocketHandler.afterConnectionEstablished() 호출 여기서 sessionManager.addSession(userId, session) 등으로 WebSocketSession을 관리
 
     @Override
-    public void createChatRoom(CreateChatRoomRequest chatRoomRequest) {
+    public void createChatRoom(Long memberId, CreateChatRoomRequest chatRoomRequest) {
+        Member member = memberRepository.findById(memberId)
+                .orElseThrow(() -> new IllegalArgumentException("없는 사람이에요"));
 
+        ChatRoom chatRoom = ChatRoom.builder()
+                .roomName(chatRoomRequest.getName())
+                .type(chatRoomRequest.getType())
+                .maxMembers(chatRoomRequest.getMaxMembers())
+                .createdBy(member)
+                .build();
+
+        ChatRoom room = chatRoomRepository.save(chatRoom);// 채팅방 생성
+
+        ChatRoomMember chatRoomMember = ChatRoomMember.builder()
+                .chatRoom(room)
+                .member(member)
+                .role(MemberRole.ADMIN)
+                .build();
+
+        chatRoomMemberRepository.save(chatRoomMember); // 멤버 채팅방에 넣어주기
+
+        // 생성자 세션 갱신 해주기
+        if(webSocketSessionManager.isUserOnlineLocally(memberId)){ // 세션에 연결되어 있는 확인
+            // 채팅방 생성 알림 메시지 전송
+            // 생성된 채팅방 구독 하기
+        }
     }
 }

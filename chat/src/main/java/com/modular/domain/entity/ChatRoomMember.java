@@ -1,5 +1,6 @@
 package com.modular.domain.entity;
 
+import com.modular.domain.type.MemberRole;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -25,8 +26,8 @@ public class ChatRoomMember {
     private Member member;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "role")
-    private String role; // 권한 ADMIN, MEMBER
+    @Column(name = "role", nullable = false)
+    private MemberRole role; // 권한 ADMIN, MEMBER
 
     @Column(name = "last_read_message_id")
     private Long lastReadMessageId; // 마지막으로 읽은 메세지 ID
