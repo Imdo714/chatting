@@ -4,5 +4,6 @@ include(
         'api', // 메인 애플리케이션, API
         'member', // 회원 관리
         'chat', // 채팅 관리
-        'common', // 글로벌 config (Redis, kafka
+        'common', // 글로벌 config (Redis, kafka)
+        'domain', // 엔티티 연관 관계 순환 참조를 위해 Entity 모듈 분리
 )

@@ -1,6 +1,6 @@
 package com.modular.repository;
 
-import com.modular.domain.entity.ChatRoom;
+import com.modular.chat.ChatRoom;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 

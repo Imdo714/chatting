@@ -5,7 +5,9 @@ plugins {
 }
 
 dependencies {
-    implementation project(':member')
+    implementation project(':member') // Member 관련 채팅을 위해서
+    implementation project(':domain')
+    implementation project(':common')
 
     // JPA
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'

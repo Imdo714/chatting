@@ -9,7 +9,7 @@ import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 @SpringBootApplication
 @ComponentScan(basePackages = "com.modular") // 서비스, 컨트롤러 스캔
 @EnableJpaRepositories(basePackages = "com.modular.repository") // 레포지토리 스캔
-@EntityScan(basePackages = "com.modular.entity") // @Entity 위치 지정
+@EntityScan(basePackages = "com.modular") // @Entity 위치 지정
 public class ModularApplication {
 
     public static void main(String[] args) {

@@ -1,4 +1,4 @@
-package com.modular.domain.type;
+package com.modular.type;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;

@@ -2,7 +2,7 @@ package com.modular.service;
 
 import com.modular.domain.dto.request.CreateMemberRequest;
 import com.modular.domain.dto.response.MemberDto;
-import com.modular.domain.entity.Member;
+import com.modular.member.Member;
 import com.modular.repository.MemberRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

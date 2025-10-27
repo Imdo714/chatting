@@ -1,6 +1,6 @@
 package com.modular.domain.dto.request;
 
-import com.modular.domain.type.ChatRoomType;
+import com.modular.type.ChatRoomType;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 

@@ -1,5 +1,6 @@
-package com.modular.domain.entity;
+package com.modular.chat;
 
+import com.modular.member.Member;
 import jakarta.persistence.*;
 import lombok.*;
 

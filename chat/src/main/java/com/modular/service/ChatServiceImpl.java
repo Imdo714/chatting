@@ -1,13 +1,13 @@
 package com.modular.service;
 
+import com.modular.chat.ChatRoom;
+import com.modular.chat.ChatRoomMember;
 import com.modular.domain.dto.request.CreateChatRoomRequest;
-import com.modular.domain.entity.ChatRoom;
-import com.modular.domain.entity.ChatRoomMember;
-import com.modular.domain.entity.Member;
-import com.modular.domain.type.MemberRole;
+import com.modular.member.Member;
+import com.modular.repository.MemberRepository;
+import com.modular.type.MemberRole;
 import com.modular.repository.ChatRoomMemberRepository;
 import com.modular.repository.ChatRoomRepository;
-import com.modular.repository.MemberRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -53,4 +53,5 @@ public class ChatServiceImpl implements ChatService {
             // 생성된 채팅방 구독 하기
         }
     }
+
 }

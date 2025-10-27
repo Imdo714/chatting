@@ -5,6 +5,8 @@ plugins {
 }
 
 dependencies {
+    implementation project(':domain')
+    implementation project(':common')
     implementation project(':member')
     implementation project(':chat')
 
