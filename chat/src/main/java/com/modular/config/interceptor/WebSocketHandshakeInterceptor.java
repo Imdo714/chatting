@@ -19,6 +19,7 @@ public class WebSocketHandshakeInterceptor implements HandshakeInterceptor {
         try {
             // ws://localhost:8080/chat?memberId=123
             String query = request.getURI().getQuery();
+            log.info("query = {}", query);
 
             if (query != null) {
                 Map<String, String> param = parseQuery(query);

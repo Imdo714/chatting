@@ -28,7 +28,7 @@ public class ChatWebSocketHandler implements WebSocketHandler {
 
         if(memberId != null){ // 연결시도하는 memberId가 있으면 세션에 등록
             sessionManager.addSession(memberId, session);
-            log.info("Session Add {}", memberId);
+            log.info("Session Add = {}", memberId);
         }
     }
 

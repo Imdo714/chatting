@@ -25,6 +25,12 @@ public class ChatServiceImpl implements ChatService {
     // 클라이언트가 브라우저에게 WebSocket 연결 시도하면 서버는 HandshakeInterceptor.beforeHandshake()에서 memberId를 세션 attributes에 넣음
     // 연결 완료시 WebSocketHandler.afterConnectionEstablished() 호출 여기서 sessionManager.addSession(userId, session) 등으로 WebSocketSession을 관리
 
+    // 1. 채팅방 생성 API REST API로 생성만
+    // 2. 채팅방 목록 조회 API REST API로 DB에 내가 참여중인 채팅방만 보여주기??
+    // 3. 채팅방 입장 시 WebSocket 연결 시작
+
+    // TODO : 채팅방 목록 조회 시 WebSocket 연결 시작 할건지 아니면 채팅방 입장시 WebSocket 연결 할껀지
+
     @Override
     public void createChatRoom(Long memberId, CreateChatRoomRequest chatRoomRequest) {
         Member member = memberRepository.findById(memberId)

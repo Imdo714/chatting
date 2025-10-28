@@ -1,6 +1,7 @@
 package com.modular.service;
 
 import com.modular.domain.dto.request.CreateMemberRequest;
+import com.modular.domain.dto.request.LoginRequest;
 import com.modular.domain.dto.response.MemberDto;
 import com.modular.member.Member;
 import com.modular.repository.MemberRepository;
@@ -30,5 +31,17 @@ public class MemberServiceImpl implements MemberService {
                 .name(save.getName())
                 .build();
     }
+
+    @Override
+    public MemberDto login(LoginRequest loginRequest) {
+        Member member = memberRepository.findByEmailAndPassword(loginRequest.getEmail(), loginRequest.getPassword())
+                .orElseThrow(() -> new IllegalArgumentException("없는 회원입니다."));
+
+        return MemberDto.builder()
+                .id(member.getMemberId())
+                .name(member.getName())
+                .build();
+    }
+
 
 }
