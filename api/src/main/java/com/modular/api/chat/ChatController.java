@@ -16,7 +16,7 @@ public class ChatController {
     public void createChatRoom(
             @PathVariable Long memberId,
             @RequestBody CreateChatRoomRequest chatRoomRequest
-    ){
+    ) {
         chatService.createChatRoom(memberId, chatRoomRequest);
     }
 

@@ -1,6 +1,9 @@
 package com.modular.service;
 
+import com.modular.redis.RedisMessageBroker;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.web.socket.WebSocketSession;
 
@@ -11,9 +14,14 @@ import java.util.stream.Collectors;
 
 @Slf4j
 @Service
+@RequiredArgsConstructor
 public class WebSocketSessionManager {
 
     private final Map<Long, Set<WebSocketSession>> memberSession = new ConcurrentHashMap<>();
+    private final RedisTemplate<String, String> stringRedisTemplate;
+    private final RedisMessageBroker redisMessageBroker;
+
+    private final String serverRoomsKeyPrefix = "chat:server:rooms:";
 
     public void addSession(Long memberId, WebSocketSession session){
         log.info("Adding session {} to server", memberId);
@@ -52,4 +60,19 @@ public class WebSocketSessionManager {
         return !openSessions.isEmpty();
     }
 
+    public void joinRoom(Long roomId) {
+        // ex) chat:server:rooms:server-1761803111895
+        String serverRoomKey = serverRoomsKeyPrefix + redisMessageBroker.getServerId();
+
+        // 이미 구독 중인지 Redis Set에서 확인
+        Boolean wasAlreadySubscribed = stringRedisTemplate.opsForSet().isMember(serverRoomKey, roomId.toString());
+
+        // 아직 구독 안 했다면, RedisMessageBroker 통해 구독
+        if (Boolean.FALSE.equals(wasAlreadySubscribed)) {
+            redisMessageBroker.subscribeToRoom(roomId);
+        }
+
+        // 현재 서버가 구독 중인 roomId를 Redis Set에 추가 (중복은 자동 무시)
+        stringRedisTemplate.opsForSet().add(serverRoomKey, roomId.toString());
+    }
 }
