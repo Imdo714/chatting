@@ -27,13 +27,12 @@ public class RedisMessageBroker implements MessageListener {
         if (subscribedRooms.add(roomId)) {
             ChannelTopic topic = new ChannelTopic("chat.room." + roomId);
 
-            // 2. 'this' (RedisMessageBroker 객체 자신)를 리스너로 등록합니다.
+            // 'this' (RedisMessageBroker 객체 자신)를 리스너로 등록합니다.
             //    이제 방마다 새 리스너를 만들지 않습니다.
             messageListenerContainer.addMessageListener(this, topic);
 
             log.info("Subscribed to room {}", roomId);
         } else {
-            // (코틀린 코드의 오류를 수정 -> 자바 코드의 올바른 로직 사용)
             log.warn("⚠️ Already subscribed to room {}", roomId);
         }
     }

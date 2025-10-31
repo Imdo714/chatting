@@ -3,13 +3,16 @@ package com.modular.service;
 import com.modular.chat.ChatRoom;
 import com.modular.chat.ChatRoomMember;
 import com.modular.domain.dto.request.CreateChatRoomRequest;
+import com.modular.domain.dto.response.ChatRoomResponse;
 import com.modular.member.Member;
-import com.modular.repository.MemberRepository;
-import com.modular.type.MemberRole;
 import com.modular.repository.ChatRoomMemberRepository;
 import com.modular.repository.ChatRoomRepository;
+import com.modular.repository.MemberRepository;
+import com.modular.type.MemberRole;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -42,6 +45,7 @@ public class ChatServiceImpl implements ChatService {
         ChatRoom chatRoom = ChatRoom.builder()
                 .roomName(chatRoomRequest.getName())
                 .type(chatRoomRequest.getType())
+                .isActive(true)
                 .maxMembers(chatRoomRequest.getMaxMembers())
                 .createdBy(creator)
                 .build();
@@ -88,6 +92,12 @@ public class ChatServiceImpl implements ChatService {
                 webSocketSessionManager.joinRoom(room.getRoomId());
             }
         }
+    }
+
+    @Override
+    public ChatRoomResponse getChatRooms(Long memberId, Pageable pageable) {
+        Page<ChatRoom> chatRoomPage = chatRoomRepository.findUserChatRooms(memberId, pageable);
+        return ChatRoomResponse.from(chatRoomPage);
     }
 
 
