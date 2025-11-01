@@ -1,13 +1,15 @@
 package com.modular.config.handler;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.modular.domain.dto.request.SendMessageRequest;
+import com.modular.domain.dto.response.ChatRoomResponse;
+import com.modular.service.ChatService;
 import com.modular.service.WebSocketSessionManager;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Component;
-import org.springframework.web.socket.CloseStatus;
-import org.springframework.web.socket.WebSocketHandler;
-import org.springframework.web.socket.WebSocketMessage;
-import org.springframework.web.socket.WebSocketSession;
+import org.springframework.web.socket.*;
 
 @Component
 @Slf4j
@@ -15,6 +17,8 @@ import org.springframework.web.socket.WebSocketSession;
 public class ChatWebSocketHandler implements WebSocketHandler {
 
     private final WebSocketSessionManager sessionManager;
+    private final ObjectMapper objectMapper;
+    private final ChatService chatService;
 
     /**
      * WebSocket 클라이언트가 서버와의 연결(handshake)을 완료했을 때 한 번 호출됩니다.
@@ -24,12 +28,31 @@ public class ChatWebSocketHandler implements WebSocketHandler {
      * */
     @Override
     public void afterConnectionEstablished(WebSocketSession session) throws Exception {
-        Long memberId = (Long) session.getAttributes().get("memberId");
+        Long memberId = getMemberIdSession(session);
+        log.info("memberId = {}", memberId);
 
         if(memberId != null){ // 연결시도하는 memberId가 있으면 세션에 등록
             sessionManager.addSession(memberId, session);
             log.info("Session Add = {}", memberId);
+
+            try{
+                // 관련된 채팅방 목록 가져와서 구독하기
+                getRoomsJoin(memberId);
+            }catch (Exception e){
+                log.info("error = {}", e);
+            }
         }
+    }
+
+    private void getRoomsJoin(Long memberId) {
+        // 내가 참여중인 채팅방 리스트
+        ChatRoomResponse chatRooms = chatService.getChatRooms(memberId, PageRequest.of(0, 10));
+
+        chatRooms.getContent().forEach(room -> {
+            sessionManager.joinRoom(room.getRoomId());
+        });
+
+        log.info("Loaded Chat Rooms size = {}", chatRooms.getContent().size());
     }
 
     /**
@@ -40,7 +63,29 @@ public class ChatWebSocketHandler implements WebSocketHandler {
      * */
     @Override
     public void handleMessage(WebSocketSession session, WebSocketMessage<?> message) throws Exception {
+        Long memberId = getMemberIdSession(session);
 
+        String payload = (String) message.getPayload();
+        log.info("received message : {}", payload);
+
+        try {
+            // payload를 ChatMessage DTO로 변환
+            SendMessageRequest sendMessage = objectMapper.readValue(payload, SendMessageRequest.class);
+            log.info("sendMessage = {}", sendMessage);
+
+            // 메시지 발행
+            sessionManager.sendMessageToRoom(sendMessage);
+            // 같은 서버의 참여자에게 즉시 전송
+            sessionManager.sendMessageToLocalSessions(sendMessage);
+            // TODO : 그러면 같은 서버이면 전송하고 다른 서버에면 onMessage 를 이용해 Pub/Sub 을 통해 메시지 전달
+
+        } catch (Exception e) {
+            log.error("Error handling message: {}", payload, e);
+        }
+    }
+
+    private static Long getMemberIdSession(WebSocketSession session) {
+         return (Long) session.getAttributes().get("memberId");
     }
 
     /**
@@ -60,7 +105,9 @@ public class ChatWebSocketHandler implements WebSocketHandler {
      * */
     @Override
     public void afterConnectionClosed(WebSocketSession session, CloseStatus closeStatus) throws Exception {
-
+        log.info("session 연결 종료 = {}", session);
+        Long memberId = getMemberIdSession(session);
+        sessionManager.removeSession(memberId, session);
     }
 
     /**

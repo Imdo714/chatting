@@ -17,31 +17,35 @@ public class WebSocketHandshakeInterceptor implements HandshakeInterceptor {
     @Override
     public boolean beforeHandshake(ServerHttpRequest request, ServerHttpResponse response, WebSocketHandler wsHandler, Map<String, Object> attributes) throws Exception {
         try {
-            // ws://localhost:8080/chat?memberId=123
+            // ws://localhost:8080/chat?memberId
             String query = request.getURI().getQuery();
             log.info("query = {}", query);
 
-            if (query != null) {
-                Map<String, String> param = parseQuery(query);
-                String memberIdStr = param.get("memberId");
-                if (memberIdStr != null) {
-                    Long memberId = null;
-                    try {
-                        memberId = Long.parseLong(memberIdStr);
-                    } catch (NumberFormatException ignored) {}
-
-                    if (memberId != null) {
-                        attributes.put("memberId", memberId);
-                        return true;
-                    } else {
-                        return false;
-                    }
-                } else {
-                    return false;
-                }
-            } else {
+            if (query == null) {
+                log.warn("No query parameters found in WebSocket handshake");
                 return false;
             }
+
+            Map<String, String> params = parseQuery(query);
+            String memberIdStr = params.get("memberId");
+
+            if (memberIdStr == null) {
+                log.warn("Missing required parameters: memberId or roomId");
+                return false;
+            }
+
+            try {
+                Long memberId = Long.parseLong(memberIdStr);
+
+                attributes.put("memberId", memberId);
+                log.info("Handshake success: memberId={}", memberId);
+                return true;
+
+            } catch (NumberFormatException e) {
+                log.error("Invalid parameter format: {}", query, e);
+                return false;
+            }
+
         } catch (Exception e) {
             log.error("Error in beforeHandshake", e);
             return false;
@@ -59,8 +63,7 @@ public class WebSocketHandshakeInterceptor implements HandshakeInterceptor {
 
     private Map<String, String> parseQuery(String query) {
         Map<String, String> result = new HashMap<>();
-        String[] params = query.split("&");
-        for (String param : params) {
+        for (String param : query.split("&")) {
             String[] parts = param.split("=", 2);
             if (parts.length == 2) {
                 result.put(parts[0], parts[1]);
