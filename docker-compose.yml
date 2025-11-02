@@ -1,0 +1,69 @@
+version: '3.8'
+
+services:
+  redis:
+    image: redis:7-alpine
+    container_name: chat-redis
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+    networks:
+      - chat-network
+    # Redis가 준비되었는지 확인하는 healthcheck 추가
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  chat-server-1:
+    build: .
+    container_name: chat-server-1
+    environment:
+      - SPRING_PROFILES_ACTIVE=server1
+      - SPRING_DATASOURCE_URL=jdbc:mysql://host.docker.internal:3306/modular
+      - SPRING_DATASOURCE_USERNAME=root
+      - SPRING_DATASOURCE_PASSWORD=MYSQL1w!
+      - SERVER_PORT=8081
+      - SPRING_DATA_REDIS_HOST=redis
+      - SPRING_DATA_REDIS_PORT=6379
+    ports:
+      - "8081:8081"
+    # redis 가 'healthy' 상태가 될 때까지 기다림
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - chat-network
+
+  chat-server-2:
+    build: .
+    container_name: chat-server-2
+    environment:
+      - SPRING_PROFILES_ACTIVE=server2
+      - SPRING_DATASOURCE_URL=jdbc:mysql://host.docker.internal:3306/modular
+      - SPRING_DATASOURCE_USERNAME=root
+      - SPRING_DATASOURCE_PASSWORD=MYSQL1w!
+      - SERVER_PORT=8082
+      - SPRING_DATA_REDIS_HOST=redis
+      - SPRING_DATA_REDIS_PORT=6379
+    ports:
+      - "8082:8082"
+    # redis 가 'healthy' 상태가 될 때까지 기다림
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - chat-network
+
+# Docker 네트워크 정의
+networks:
+  chat-network:
+    driver: bridge
+
+# Docker 볼륨 정의
+volumes:
+  redis_data:
+
