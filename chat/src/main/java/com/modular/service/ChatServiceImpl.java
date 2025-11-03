@@ -2,13 +2,18 @@ package com.modular.service;
 
 import com.modular.chat.ChatRoom;
 import com.modular.chat.ChatRoomMember;
+import com.modular.chat.Message;
+import com.modular.domain.dto.request.ChatMessage;
 import com.modular.domain.dto.request.CreateChatRoomRequest;
+import com.modular.domain.dto.request.SendMessageRequest;
 import com.modular.domain.dto.response.ChatRoomResponse;
 import com.modular.member.Member;
 import com.modular.repository.ChatRoomMemberRepository;
 import com.modular.repository.ChatRoomRepository;
 import com.modular.repository.MemberRepository;
+import com.modular.repository.MessageRepository;
 import com.modular.type.MemberRole;
+import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -16,6 +21,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -28,7 +34,9 @@ public class ChatServiceImpl implements ChatService {
     private final ChatRoomRepository chatRoomRepository;
     private final ChatRoomMemberRepository chatRoomMemberRepository;
     private final MemberRepository memberRepository;
+    private final MessageRepository messageRepository;
     private final WebSocketSessionManager webSocketSessionManager;
+    private final MessageSequenceService messageSequenceService;
 
     // 클라이언트가 브라우저에게 WebSocket 연결 시도하면 서버는 HandshakeInterceptor.beforeHandshake()에서 memberId를 세션 attributes에 넣음
     // 연결 완료시 WebSocketHandler.afterConnectionEstablished() 호출 여기서 sessionManager.addSession(userId, session) 등으로 WebSocketSession을 관리
@@ -47,6 +55,7 @@ public class ChatServiceImpl implements ChatService {
                 .type(chatRoomRequest.getType())
                 .isActive(true)
                 .maxMembers(chatRoomRequest.getMaxMembers())
+                .createdAt(LocalDateTime.now())
                 .createdBy(creator)
                 .build();
 
@@ -98,6 +107,53 @@ public class ChatServiceImpl implements ChatService {
     public ChatRoomResponse getChatRooms(Long memberId, Pageable pageable) {
         Page<ChatRoom> chatRoomPage = chatRoomRepository.findUserChatRooms(memberId, pageable);
         return ChatRoomResponse.from(chatRoomPage);
+    }
+
+    @Override
+    @Transactional
+    public void sendMessage(SendMessageRequest sendMessage, Long memberId) {
+        // 채팅방, 회원, 검증, 현재 유저가 해당 방의 활성 멤버인지 확인
+        Long sequenceNumber = messageSequenceService.getNextSequence(sendMessage.getRoomId());
+
+        Message message = Message.builder()
+                .chatRoom(getReferenceChatRoomById(sendMessage.getRoomId()))
+                .sendMember(getReferenceMemberById(sendMessage.getSenderId()))
+                .content(sendMessage.getMessage())
+                .sequenceNumber(sequenceNumber)
+                .createdAt(LocalDateTime.now())
+                .build();
+        Message savedMessage = messageRepository.save(message);// 메시지 저장
+        log.info("저장된 메시지 ID = {}", savedMessage.getMessageId());
+
+        ChatMessage chatMessage = ChatMessage.builder()
+                .messageId(savedMessage.getMessageId())
+                .roomId(savedMessage.getChatRoom().getRoomId())
+                .content(savedMessage.getContent())
+                .senderId(savedMessage.getSendMember().getMemberId())
+                .senderName(savedMessage.getSendMember().getName())
+                .sequenceNumber(savedMessage.getSequenceNumber())
+                .build();
+
+        // 로컬 세션에 즉시 전송 (실시간 응답성 보장)
+        webSocketSessionManager.sendMessageToLocalRoom(sendMessage.getRoomId(), chatMessage);
+
+        // 다른 서버에 브로드캐스 전달 (자신을 제외)
+    }
+
+    private ChatRoom getReferenceChatRoomById(Long roomId) {
+        try {
+            return chatRoomRepository.getReferenceById(roomId);
+        } catch (EntityNotFoundException e) {
+            throw new IllegalArgumentException("채팅방 없음");
+        }
+    }
+
+    private Member getReferenceMemberById(Long memberId) {
+        try {
+            return memberRepository.getReferenceById(memberId);
+        } catch (EntityNotFoundException e) {
+            throw new IllegalArgumentException("멤버 없음");
+        }
     }
 
 

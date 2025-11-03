@@ -45,7 +45,7 @@ public class RedisMessageBroker implements MessageListener {
         }
     }
 
-    @Override // 메시지를 받을 때
+    @Override // 구독중인 방에서 메시지를 받을 때
     public void onMessage(Message message, byte[] pattern) {
         log.info("=================== onMessage ======================");
         String channel = new String(message.getChannel()); // ex) "chat.room.123"

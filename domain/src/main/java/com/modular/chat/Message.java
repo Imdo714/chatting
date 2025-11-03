@@ -3,6 +3,9 @@ package com.modular.chat;
 import com.modular.member.Member;
 import jakarta.persistence.*;
 import lombok.*;
+import org.springframework.data.annotation.CreatedDate;
+
+import java.time.LocalDateTime;
 
 @Entity
 @Getter
@@ -30,4 +33,7 @@ public class Message {
 
     @Column(name = "sequence_number")
     private Long sequenceNumber; // 메시지 순서 보장을 위한 번호 (채팅방별로 관리)
+
+    @Column(name = "created_at")
+    private LocalDateTime createdAt;
 }

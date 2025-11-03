@@ -37,19 +37,20 @@ public class ChatWebSocketHandler implements WebSocketHandler {
 
             try{
                 // 관련된 채팅방 목록 가져와서 구독하기
-                getRoomsJoin(memberId);
+                getRoomsJoin(memberId, session);
             }catch (Exception e){
                 log.info("error = {}", e);
             }
         }
     }
 
-    private void getRoomsJoin(Long memberId) {
+    private void getRoomsJoin(Long memberId, WebSocketSession session) {
         // 내가 참여중인 채팅방 리스트
         ChatRoomResponse chatRooms = chatService.getChatRooms(memberId, PageRequest.of(0, 10));
 
         chatRooms.getContent().forEach(room -> {
-            sessionManager.joinRoom(room.getRoomId());
+            sessionManager.joinRoom(room.getRoomId()); // 현재 서버가 채팅방 구독하기
+            sessionManager.addRoomIdSession(room.getRoomId(), session);
         });
 
         log.info("Loaded Chat Rooms size = {}", chatRooms.getContent().size());
@@ -73,10 +74,14 @@ public class ChatWebSocketHandler implements WebSocketHandler {
             SendMessageRequest sendMessage = objectMapper.readValue(payload, SendMessageRequest.class);
             log.info("sendMessage = {}", sendMessage);
 
+            // 메시지 전송 및 DB 저장
+            chatService.sendMessage(sendMessage, memberId);
+
+
             // 메시지 발행
-            sessionManager.sendMessageToRoom(sendMessage);
+//            sessionManager.sendMessageToRoom(sendMessage);
             // 같은 서버의 참여자에게 즉시 전송
-            sessionManager.sendMessageToLocalSessions(sendMessage);
+//            sessionManager.sendMessageToLocalSessions(sendMessage);
             // TODO : 그러면 같은 서버이면 전송하고 다른 서버에면 onMessage 를 이용해 Pub/Sub 을 통해 메시지 전달
 
         } catch (Exception e) {

@@ -2,6 +2,7 @@ package com.modular.service;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.modular.domain.dto.request.ChatMessage;
 import com.modular.domain.dto.request.SendMessageRequest;
 import com.modular.event.ChatMessageReceivedEvent;
 import com.modular.redis.RedisMessageBroker;
@@ -14,6 +15,7 @@ import org.springframework.web.socket.TextMessage;
 import org.springframework.web.socket.WebSocketSession;
 
 import java.io.IOException;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -24,7 +26,13 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class WebSocketSessionManager {
 
+    // memberId가 여러 탭에서 로그인 했는지
     private final Map<Long, Set<WebSocketSession>> memberSession = new ConcurrentHashMap<>();
+    // 특정 채팅방에 어떤 세션이 있는지
+    private final Map<Long, Set<WebSocketSession>> roomSession = new ConcurrentHashMap<>();
+    // 현재 세션이 어떤 방들에 속해있는지
+    private final Map<WebSocketSession, Set<Long>> sessionRooms = new ConcurrentHashMap<>();
+
     private final RedisTemplate<String, String> stringRedisTemplate;
     private final RedisMessageBroker redisMessageBroker;
     private final ObjectMapper objectMapper;
@@ -45,7 +53,7 @@ public class WebSocketSessionManager {
                 .add(session);
     }
 
-    public Boolean isUserOnlineLocally(Long memberId){
+    public Boolean isUserOnlineLocally(Long memberId){ // 회원이 온라인인지 오프라인인지 판별
         // 사용자의 세션 집합을 가져옴 (없으면 null)
         Set<WebSocketSession> sessions = memberSession.get(memberId);
         if (sessions == null) {
@@ -95,7 +103,42 @@ public class WebSocketSessionManager {
     }
 
     public void removeSession(Long memberId, WebSocketSession session) {
-        memberSession.remove(memberId);
+        Set<WebSocketSession> sessions = memberSession.get(memberId);
+        if (sessions != null) {
+            sessions.remove(session);
+            if (sessions.isEmpty()) {
+                memberSession.remove(memberId);
+            }
+        }
+        // 참여중인 채팅방 조회
+        Set<Long> joinedRooms = sessionRooms.remove(session);
+        if (joinedRooms != null) {
+            for (Long roomId : joinedRooms) {
+                Set<WebSocketSession> roomSessions = roomSession.get(roomId);
+                if (roomSessions != null) {
+                    roomSessions.remove(session);
+                    if (roomSessions.isEmpty()) {
+                        roomSession.remove(roomId);
+
+                        // 이 서버에 그 방 세션이 아예 없으면 Redis 구독 해제
+                        unsubscribeIfEmpty(roomId);
+                    }
+                }
+            }
+        }
+
+        log.info("Session closed. Cleaned up rooms: {}", joinedRooms);
+    }
+
+    private void unsubscribeIfEmpty(Long roomId) {
+        if (!roomSession.containsKey(roomId)) {
+//            redisMessageBroker.unsubscribeFromRoom(roomId);
+
+            String serverRoomKey = serverRoomsKeyPrefix + redisMessageBroker.getServerId();
+            stringRedisTemplate.opsForSet().remove(serverRoomKey, roomId.toString());
+
+            log.info("Unsubscribed from empty room {}", roomId);
+        }
     }
 
     public void sendMessageToRoom(SendMessageRequest sendMessage) { // Redis Pub/Sub 에 메시지 발행
@@ -133,5 +176,54 @@ public class WebSocketSessionManager {
             }
         }
     }
+
+    public void addRoomIdSession(Long roomId, WebSocketSession session) {
+        // 특정 방에 session(memberId)들 저장
+        roomSession
+                .computeIfAbsent(roomId, k -> ConcurrentHashMap.newKeySet())
+                .add(session);
+
+        // session(memberId)이 참여 중인 채팅방들 저장
+        sessionRooms.computeIfAbsent(session, k -> ConcurrentHashMap.newKeySet())
+                .add(roomId);
+    }
+
+    // 요청하는 RoomId 찾아서 세션 한테 전달
+    public void sendMessageToLocalRoom(Long roomId, ChatMessage message) {
+        try {
+            String json = objectMapper.writeValueAsString(message);
+            Set<WebSocketSession> sessions = roomSession.get(roomId);
+
+            if (sessions == null || sessions.isEmpty()) {
+                log.debug("No local sessions found for room {}", roomId);
+                return;
+            }
+
+            Set<WebSocketSession> closedSessions = new HashSet<>();
+
+            for (WebSocketSession session : sessions) {
+                if (session.isOpen()) {
+                    try {
+                        session.sendMessage(new TextMessage(json)); // 메시지 전달
+                        log.info("Sent message to room {}", roomId);
+                    } catch (Exception e) {
+                        log.error("Failed to send message to session {}", session.getId(), e);
+                        closedSessions.add(session);
+                    }
+                } else {
+                    closedSessions.add(session);
+                }
+            }
+
+            // 닫힌 세션 정리
+            if (!closedSessions.isEmpty()) {
+                sessions.removeAll(closedSessions);
+            }
+
+        } catch (IOException e) {
+            log.error("Error sending message to room {}", roomId, e);
+        }
+    }
+
 
 }
