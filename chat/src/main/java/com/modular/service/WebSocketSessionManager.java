@@ -141,24 +141,6 @@ public class WebSocketSessionManager {
         }
     }
 
-    public void sendMessageToRoom(SendMessageRequest sendMessage) { // Redis Pub/Sub 에 메시지 발행
-        String topic = "chat:room:" + sendMessage.getRoomId();
-        log.info("topic = {}", topic);
-
-        sendMessage.updateServerId(redisMessageBroker.getServerId());
-
-        try {
-            String messagePayload = objectMapper.writeValueAsString(sendMessage);
-            log.info("messagePayload = {}", messagePayload);
-
-            // Redis로 발행!
-            stringRedisTemplate.convertAndSend(topic, messagePayload);
-            log.info("Published to Redis topic: {}, from server: {}", topic, sendMessage.getServerId());
-        } catch (JsonProcessingException e) {
-            log.error("Failed to serialize chat message", e);
-        }
-    }
-
     public void sendMessageToLocalSessions(SendMessageRequest message) {
         log.info("=================== sendMessageToLocalSessions ======================");
         // 예: roomId별로 memberId 목록 관리하고 있다면 그 세션들 찾아서 보내기

@@ -8,6 +8,7 @@ import com.modular.domain.dto.request.CreateChatRoomRequest;
 import com.modular.domain.dto.request.SendMessageRequest;
 import com.modular.domain.dto.response.ChatRoomResponse;
 import com.modular.member.Member;
+import com.modular.redis.RedisMessageBroker;
 import com.modular.repository.ChatRoomMemberRepository;
 import com.modular.repository.ChatRoomRepository;
 import com.modular.repository.MemberRepository;
@@ -37,6 +38,7 @@ public class ChatServiceImpl implements ChatService {
     private final MessageRepository messageRepository;
     private final WebSocketSessionManager webSocketSessionManager;
     private final MessageSequenceService messageSequenceService;
+    private final RedisMessageBroker redisMessageBroker;
 
     // 클라이언트가 브라우저에게 WebSocket 연결 시도하면 서버는 HandshakeInterceptor.beforeHandshake()에서 memberId를 세션 attributes에 넣음
     // 연결 완료시 WebSocketHandler.afterConnectionEstablished() 호출 여기서 sessionManager.addSession(userId, session) 등으로 WebSocketSession을 관리
@@ -137,7 +139,8 @@ public class ChatServiceImpl implements ChatService {
         // 로컬 세션에 즉시 전송 (실시간 응답성 보장)
         webSocketSessionManager.sendMessageToLocalRoom(sendMessage.getRoomId(), chatMessage);
 
-        // 다른 서버에 브로드캐스 전달 (자신을 제외)
+        // 다른 서버에 Redis 을 이용해 브로드캐스팅 전달 (같은 서버는 제외)
+        redisMessageBroker.broadcastToRoom(sendMessage.getRoomId(), chatMessage, redisMessageBroker.getServerId());
     }
 
     private ChatRoom getReferenceChatRoomById(Long roomId) {

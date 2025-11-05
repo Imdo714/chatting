@@ -1,6 +1,8 @@
 package com.modular.redis;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.modular.domain.dto.request.ChatMessage;
 import com.modular.domain.dto.request.SendMessageRequest;
 import com.modular.event.ChatMessageReceivedEvent;
 import lombok.Getter;
@@ -9,6 +11,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.redis.connection.Message;
 import org.springframework.data.redis.connection.MessageListener;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.listener.ChannelTopic;
 import org.springframework.data.redis.listener.RedisMessageListenerContainer;
 import org.springframework.stereotype.Service;
@@ -26,6 +29,7 @@ public class RedisMessageBroker implements MessageListener {
     private final Set<Long> subscribedRooms = ConcurrentHashMap.newKeySet();  // 구독 중인 방 ID 목록
     private final RedisMessageListenerContainer messageListenerContainer; // Redis 리스너 컨테이너
     private final ObjectMapper objectMapper;
+    private final RedisTemplate<String, String> stringRedisTemplate;
 
     private final ApplicationEventPublisher eventPublisher;
 
@@ -70,6 +74,20 @@ public class RedisMessageBroker implements MessageListener {
 
         } catch (Exception e) {
             log.error("Error processing received message from channel {}", channel, e);
+        }
+    }
+
+    public void broadcastToRoom(Long roomId, ChatMessage chatMessage, String serverId) {
+        String topic = "chat:room:" + roomId;
+
+        try {
+            String messagePayload = objectMapper.writeValueAsString(chatMessage);
+            log.info("messagePayload = {}", messagePayload);
+
+            // Redis 로 발행!
+            stringRedisTemplate.convertAndSend(topic, messagePayload);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
         }
     }
 }

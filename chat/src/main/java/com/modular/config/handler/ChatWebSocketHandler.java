@@ -77,13 +77,6 @@ public class ChatWebSocketHandler implements WebSocketHandler {
             // 메시지 전송 및 DB 저장
             chatService.sendMessage(sendMessage, memberId);
 
-
-            // 메시지 발행
-//            sessionManager.sendMessageToRoom(sendMessage);
-            // 같은 서버의 참여자에게 즉시 전송
-//            sessionManager.sendMessageToLocalSessions(sendMessage);
-            // TODO : 그러면 같은 서버이면 전송하고 다른 서버에면 onMessage 를 이용해 Pub/Sub 을 통해 메시지 전달
-
         } catch (Exception e) {
             log.error("Error handling message: {}", payload, e);
         }
