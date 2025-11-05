@@ -1,9 +1,7 @@
 package com.modular.service;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.modular.domain.dto.request.ChatMessage;
-import com.modular.domain.dto.request.SendMessageRequest;
 import com.modular.event.ChatMessageReceivedEvent;
 import com.modular.redis.RedisMessageBroker;
 import lombok.RequiredArgsConstructor;
@@ -37,14 +35,12 @@ public class WebSocketSessionManager {
     private final RedisMessageBroker redisMessageBroker;
     private final ObjectMapper objectMapper;
 
-    @EventListener
-    public void handleRedisChatMessage(ChatMessageReceivedEvent event) {
-        SendMessageRequest message = event.getMessage();
-        log.info("Received ChatMessageReceivedEvent for room {}", message.getRoomId());
-        sendMessageToLocalSessions(message);
-    }
-
     private final String serverRoomsKeyPrefix = "chat:server:rooms:";
+
+    @EventListener
+    public void onChatMessageReceived(ChatMessageReceivedEvent event) {
+        sendMessageToLocalRoom(event.getRoomId(), event.getMessage());
+    }
 
     public void addSession(Long memberId, WebSocketSession session){
         log.info("Adding session {} to server", memberId);
@@ -141,24 +137,6 @@ public class WebSocketSessionManager {
         }
     }
 
-    public void sendMessageToLocalSessions(SendMessageRequest message) {
-        log.info("=================== sendMessageToLocalSessions ======================");
-        // 예: roomId별로 memberId 목록 관리하고 있다면 그 세션들 찾아서 보내기
-        Set<WebSocketSession> sessions = memberSession.get(message.getSenderId()); // 예시
-
-        if (sessions != null) {
-            for (WebSocketSession session : sessions) {
-                try {
-                    if (session.isOpen()) {
-                        session.sendMessage(new TextMessage(objectMapper.writeValueAsString(message)));
-                    }
-                } catch (IOException e) {
-                    log.error("Failed to send WebSocket message to session {}", session.getId(), e);
-                }
-            }
-        }
-    }
-
     public void addRoomIdSession(Long roomId, WebSocketSession session) {
         // 특정 방에 session(memberId)들 저장
         roomSession
@@ -187,7 +165,7 @@ public class WebSocketSessionManager {
                 if (session.isOpen()) {
                     try {
                         session.sendMessage(new TextMessage(json)); // 메시지 전달
-                        log.info("Sent message to room {}", roomId);
+                        log.info("{} 번 room에 Message 전달", roomId);
                     } catch (Exception e) {
                         log.error("Failed to send message to session {}", session.getId(), e);
                         closedSessions.add(session);

@@ -15,5 +15,6 @@ public class ChatMessage {
     private Long senderId;
     private String senderName;
     private Long sequenceNumber;
+    private String serverId;
 
 }

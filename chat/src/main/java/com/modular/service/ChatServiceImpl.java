@@ -134,13 +134,14 @@ public class ChatServiceImpl implements ChatService {
                 .senderId(savedMessage.getSendMember().getMemberId())
                 .senderName(savedMessage.getSendMember().getName())
                 .sequenceNumber(savedMessage.getSequenceNumber())
+                .serverId(redisMessageBroker.getServerId())
                 .build();
 
         // 로컬 세션에 즉시 전송 (실시간 응답성 보장)
         webSocketSessionManager.sendMessageToLocalRoom(sendMessage.getRoomId(), chatMessage);
 
         // 다른 서버에 Redis 을 이용해 브로드캐스팅 전달 (같은 서버는 제외)
-        redisMessageBroker.broadcastToRoom(sendMessage.getRoomId(), chatMessage, redisMessageBroker.getServerId());
+        redisMessageBroker.broadcastToRoom(sendMessage.getRoomId(), chatMessage);
     }
 
     private ChatRoom getReferenceChatRoomById(Long roomId) {
