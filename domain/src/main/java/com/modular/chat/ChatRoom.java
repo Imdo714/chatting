@@ -2,6 +2,7 @@ package com.modular.chat;
 
 import com.modular.type.ChatRoomType;
 import com.modular.member.Member;
+import com.modular.type.MemberRole;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -42,9 +43,39 @@ public class ChatRoom {
     @JoinColumn(name = "created_by", nullable = false)
     private Member createdBy; // 채팅 방 생성자
 
+    @Builder.Default
     @OneToMany(mappedBy = "chatRoom", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<ChatRoomMember> chatRoomMembers = new ArrayList<>();
 
     @OneToMany(mappedBy = "chatRoom", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Message> messageList = new ArrayList<>();
+
+    public static ChatRoom create(Member creator, String roomName, ChatRoomType type, int maxMembers) {
+        ChatRoom room = ChatRoom.builder()
+                .roomName(roomName)
+                .type(type)
+                .isActive(true)
+                .maxMembers(maxMembers)
+                .createdAt(LocalDateTime.now())
+                .createdBy(creator)
+                .build();
+
+        room.addMember(creator, MemberRole.ADMIN);
+        return room;
+    }
+
+    public void addMembers(List<Member> members) {
+        for (Member member : members) {
+            addMember(member, MemberRole.MEMBER);
+        }
+    }
+
+    private void addMember(Member member, MemberRole role) {
+        ChatRoomMember crm = ChatRoomMember.builder()
+                .chatRoom(this)
+                .member(member)
+                .role(role)
+                .build();
+        this.chatRoomMembers.add(crm);
+    }
 }

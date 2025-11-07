@@ -165,7 +165,7 @@ public class WebSocketSessionManager {
                 if (session.isOpen()) {
                     try {
                         session.sendMessage(new TextMessage(json)); // 메시지 전달
-                        log.info("{} 번 room에 Message 전달", roomId);
+                        log.info("{}번 Room에 Message 전달", roomId);
                     } catch (Exception e) {
                         log.error("Failed to send message to session {}", session.getId(), e);
                         closedSessions.add(session);

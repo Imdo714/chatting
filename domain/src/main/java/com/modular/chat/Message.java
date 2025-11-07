@@ -36,4 +36,17 @@ public class Message {
 
     @Column(name = "created_at")
     private LocalDateTime createdAt;
+
+    private Message(ChatRoom chatRoom, Member sender, String content, Long sequenceNumber) {
+        this.chatRoom = chatRoom;
+        this.sendMember = sender;
+        this.content = content;
+        this.sequenceNumber = sequenceNumber;
+        this.createdAt = LocalDateTime.now();
+    }
+
+    public static Message create(ChatRoom room, Member sender, String content, Long sequenceNumber) {
+        return new Message(room, sender, content, sequenceNumber);
+    }
+
 }

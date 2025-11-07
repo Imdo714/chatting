@@ -23,16 +23,15 @@ import java.util.concurrent.ConcurrentHashMap;
 @Slf4j
 @RequiredArgsConstructor
 public class RedisMessageBroker implements MessageListener {
-    // 다른 서버에 있는 사람들에게 메시지를 보낼 때 같은 서버는 증복으로 보내지 않게 하기 위해
-    @Getter
+
+    @Getter // 다른 서버에 있는 사람들에게 메시지를 보낼 때 같은 서버는 증복으로 보내지 않게 하기 위해
     private final String serverId = System.getenv("HOSTNAME") != null ? System.getenv("HOSTNAME") : "server-" + System.currentTimeMillis();
+    private final ConcurrentHashMap<Long, Long> processedMessages = new ConcurrentHashMap<>(); // 메시지 증복 처리를 위해 처리한 메시지 ID 저장
     private final Set<Long> subscribedRooms = ConcurrentHashMap.newKeySet();  // 구독 중인 방 ID 목록
     private final RedisMessageListenerContainer messageListenerContainer; // Redis 리스너 컨테이너
-    private final ObjectMapper objectMapper;
     private final RedisTemplate<String, String> stringRedisTemplate;
-    private final ConcurrentHashMap<Long, Long> processedMessages = new ConcurrentHashMap<>(); // 메시지 증복 처리를 위해 처리한 메시지 ID 저장
     private final ApplicationEventPublisher eventPublisher;
-
+    private final ObjectMapper objectMapper;
     private static final int MAX_PROCESSED_MESSAGES_SIZE = 100; // processedMessages 를 100씩만 담아주기 위해
 
     // 채팅 방 구독 메서드
@@ -41,9 +40,7 @@ public class RedisMessageBroker implements MessageListener {
             ChannelTopic topic = new ChannelTopic("chat:room:" + roomId);
 
             // 'this' (RedisMessageBroker 객체 자신)를 리스너로 등록합니다.
-            //    이제 방마다 새 리스너를 만들지 않습니다.
             messageListenerContainer.addMessageListener(this, topic);
-
             log.info("Subscribed to room {}", roomId);
         } else {
             log.warn("Already subscribed to room {}", roomId);
@@ -52,11 +49,9 @@ public class RedisMessageBroker implements MessageListener {
     @Override // 구독중인 방에서 메시지를 받을 때
     public void onMessage(Message message, byte[] pattern) {
         log.info("=================== onMessage ======================");
-        String channel = new String(message.getChannel());
-        String payload = new String(message.getBody());
-        log.info("Received message from channel {}: {}", channel, payload);
-
         try {
+            String payload = new String(message.getBody());
+
             ChatMessage sendMessage = objectMapper.readValue(payload, ChatMessage.class);
 
             if(sendMessage.getServerId().equals(this.serverId)){
